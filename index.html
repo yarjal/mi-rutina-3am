@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Rutina 3AM</title>
+<meta name="description" content="Rutina diaria: levantarse a las 3am, estudio, gym y cero procrastinación.">
+<meta name="theme-color" content="#0f1115">
+<style>
+:root{
+  --bg:#0f1115; --card:#181b22; --card2:#20242d; --text:#eef0f4; --muted:#9aa1ad;
+  --line:#2a2f3a; --accent:#ff7a1a; --ok:#2ecc71; --bad:#ff4d4f; --study:#5b9dff; --gym:#ff7a1a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+h1{font-size:1.5rem;margin:0}
+h1 span{color:var(--accent)}
+h2{font-size:1.05rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.clock{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.95rem}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.full{grid-column:1/-1}
+.btn{border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--card2);color:var(--text)}
+.btn:hover{filter:brightness(1.15)}
+.btn.primary{background:var(--accent);color:#111}
+.btn.study{background:var(--study);color:#06122a}
+.btn.ok{background:var(--ok);color:#06210f}
+.btn.small{padding:6px 10px;font-size:.85rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted);font-size:.9rem}
+.big{font-size:2.6rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.stat{display:flex;flex-direction:column;background:var(--card2);border-radius:10px;padding:10px 12px;flex:1;min-width:90px}
+.stat b{font-size:1.4rem}
+.stat small{color:var(--muted)}
+.bar{height:10px;background:var(--card2);border-radius:99px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
+.bar.study i{background:var(--study)}
+ul.tasks{list-style:none;margin:0;padding:0}
+ul.tasks li{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line)}
+ul.tasks li.now{background:rgba(255,122,26,.12);border-radius:8px}
+ul.tasks li.done .t{text-decoration:line-through;color:var(--muted)}
+ul.tasks .time{font-variant-numeric:tabular-nums;color:var(--muted);width:48px;flex:none;font-size:.9rem}
+ul.tasks .t{flex:1}
+ul.tasks .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none}
+input[type=text],input[type=time],input[type=number],select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;min-width:0}
+.wake-ok{color:var(--ok);font-weight:700}
+.wake-bad{color:var(--bad);font-weight:700}
+.quote{font-style:italic;color:var(--text);border-left:3px solid var(--accent);padding-left:10px;margin:0}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day{background:var(--card2);border-radius:10px;padding:8px 4px;text-align:center;font-size:.8rem}
+.day .d{color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--line);margin:2px}
+.dot.on{background:var(--ok)}
+.dot.s{background:var(--study)}
+.dot.g{background:var(--gym)}
+.score{font-size:1.1rem;font-weight:800;margin-top:4px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--card2);font-size:.8rem;color:var(--muted)}
+footer{margin:24px 0;text-align:center}
+@media (max-width:520px){.big{font-size:2.1rem}.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⏰ Mi Rutina <span>3AM</span></h1>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <div class="grid">
+    <!-- DESPERTAR -->
+    <section class="card">
+      <h2>🌅 Levantarme a las <span id="wakeTargetLbl">03:00</span></h2>
+      <div id="wakeStatus" class="muted">Aún no marcas tu hora de hoy.</div>
+      <div class="row" style="margin:12px 0">
+        <button class="btn primary" id="wakeBtn">¡Ya me levanté!</button>
+      </div>
+      <div class="row">
+        <div class="stat"><b id="wakeStreak">0</b><small>racha 🔥</small></div>
+        <div class="stat"><b id="wakeBest">0</b><small>mejor racha</small></div>
+      </div>
+      <p class="muted" id="sleepTip" style="margin-bottom:0"></p>
+    </section>
+
+    <!-- ANTI PROCRASTINACION -->
+    <section class="card">
+      <h2>🚫 Cero procrastinación</h2>
+      <p class="quote" id="quote"></p>
+      <div style="margin-top:12px">
+        <div class="muted">¿Qué es lo ÚNICO que debo hacer ahora?</div>
+        <input type="text" id="oneThing" placeholder="Ej: terminar capítulo 3" style="width:100%;margin-top:6px">
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="twoMin">Regla de 2 min ▶</button>
+        <button class="btn small" id="newQuote">Otra frase</button>
+      </div>
+      <p class="muted" style="margin-bottom:0">Si no tienes ganas: empieza solo 2 minutos. Lo difícil es empezar.</p>
+    </section>
+
+    <!-- TIMER -->
+    <section class="card">
+      <h2>⏱️ Temporizador de enfoque</h2>
+      <div class="row">
+        <select id="timerType">
+          <option value="study">📚 Estudio</option>
+          <option value="gym">🏋️ Gym</option>
+        </select>
+        <select id="timerMin">
+          <option value="25">25 min</option>
+          <option value="50" selected>50 min</option>
+          <option value="90">90 min</option>
+          <option value="2">2 min</option>
+        </select>
+      </div>
+      <div class="big" id="timer" style="margin:10px 0">50:00</div>
+      <div class="row">
+        <button class="btn study" id="timerStart">Empezar</button>
+        <button class="btn" id="timerReset">Reiniciar</button>
+      </div>
+      <p class="muted" id="timerMsg" style="margin-bottom:0">Al terminar, el tiempo se suma solo a tus horas de hoy.</p>
+    </section>
+
+    <!-- HORAS -->
+    <section class="card">
+      <h2>📊 Hoy</h2>
+      <div class="muted">📚 Estudio (lo que me gusta): <b id="studyLbl">0h 0m</b> / <span id="studyGoalLbl"></span></div>
+      <div class="bar study"><i id="studyBar"></i></div>
+      <div class="muted">🏋️ Gym: <b id="gymLbl">0m</b> / <span id="gymGoalLbl"></span></div>
+      <div class="bar"><i id="gymBar"></i></div>
+      <div class="row" style="margin-top:10px">
+        <input type="number" id="addMin" min="1" placeholder="min" style="width:80px">
+        <button class="btn small study" data-add="study">+ Estudio</button>
+        <button class="btn small" data-add="gym" style="background:var(--gym);color:#111">+ Gym</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="stat"><b id="dayScore">0%</b><small>día cumplido</small></div>
+        <div class="stat"><b id="tasksDone">0/0</b><small>tareas</small></div>
+      </div>
+    </section>
+
+    <!-- RUTINA -->
+    <section class="card full">
+      <h2>📋 Rutina del día <span class="tag" id="nowTag"></span></h2>
+      <ul class="tasks" id="tasks"></ul>
+      <div class="row" style="margin-top:12px">
+        <input type="time" id="newTime" value="12:00">
+        <input type="text" id="newTask" placeholder="Nueva actividad" style="flex:1">
+        <button class="btn small ok" id="addTask">Agregar</button>
+      </div>
+    </section>
+
+    <!-- SEMANA -->
+    <section class="card full">
+      <h2>📅 Últimos 7 días</h2>
+      <div class="week" id="week"></div>
+      <div class="legend muted">
+        <span><i class="dot on"></i> me levanté a tiempo</span>
+        <span><i class="dot s"></i> meta de estudio</span>
+        <span><i class="dot g"></i> fui al gym</span>
+      </div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section class="card full">
+      <h2>⚙️ Mis metas</h2>
+      <div class="row">
+        <label class="muted">Despertar <input type="time" id="setWake"></label>
+        <label class="muted">Tolerancia (min) <input type="number" id="setGrace" min="0" style="width:70px"></label>
+        <label class="muted">Estudio (h/día) <input type="number" id="setStudy" min="0" step="0.5" style="width:70px"></label>
+        <label class="muted">Gym (min/día) <input type="number" id="setGym" min="0" step="5" style="width:80px"></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn small" id="exportBtn">Exportar datos</button>
+        <label class="btn small">Importar<input type="file" id="importFile" accept=".json" hidden></label>
+        <button class="btn small" id="resetRoutine">Rutina por defecto</button>
+      </div>
+      <p class="muted" style="margin-bottom:0">Tus datos se guardan solo en este navegador.</p>
+    </section>
+  </div>
+  <footer class="muted">Disciplina &gt; motivación 💪</footer>
+</div>
+
+<script>
+const KEY = 'rutina3am_v1';
+const DEFAULT_ROUTINE = [
+  ['03:00','Levantarme, tender la cama y tomar agua 💧'],
+  ['03:10','Ducha fría / lavarme la cara'],
+  ['03:20','Planear el día: escribir mi ÚNICA prioridad'],
+  ['03:30','📚 Estudio profundo (bloque 1) — sin celular'],
+  ['05:00','Descanso 10 min'],
+  ['05:10','📚 Estudio (bloque 2) — lo que me gusta'],
+  ['06:00','🏋️ Gym'],
+  ['07:30','Desayuno con proteína'],
+  ['08:00','Trabajo / escuela'],
+  ['13:00','Comida'],
+  ['16:00','📚 Repaso ligero (30 min)'],
+  ['17:30','Cena'],
+  ['18:15','Preparar ropa y cosas para mañana'],
+  ['18:30','Sin pantallas, leer'],
+  ['19:00','Dormir 😴 (8 h para las 3am)']
+];
+const QUOTES = [
+  'No esperes tener ganas. Empieza y las ganas llegan.',
+  'Lo que haces hoy decide quién eres en un año.',
+  'Disciplina es elegir lo que quieres más sobre lo que quieres ahora.',
+  'Celular lejos. Una tarea. Ahora.',
+  'Hecho es mejor que perfecto.',
+  'Mientras otros duermen, yo avanzo.',
+  'No rompas la racha.',
+  'El dolor de la disciplina pesa gramos; el del arrepentimiento, toneladas.',
+  'Solo 2 minutos. Después decides.',
+  'Tu yo del futuro te está mirando.'
+];
+
+const todayKey = (d=new Date()) => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+const fmtHM = m => Math.floor(m/60)+'h '+Math.round(m%60)+'m';
+
+function freshState(){
+  return {
+    settings:{wake:'03:00',grace:15,studyH:3,gymMin:60},
+    routine: DEFAULT_ROUTINE.map(([time,text],i)=>({id:Date.now()+i,time,text})),
+    days:{}, oneThing:''
+  };
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || freshState(); } catch(e){ S = freshState(); }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+const day = (k=todayKey()) => (S.days[k] ||= {wake:null,study:0,gym:0,done:[]});
+
+/* ---------- Despertar ---------- */
+function wakeOnTime(d){
+  if(!d || !d.wake) return false;
+  return toMin(d.wake) <= toMin(S.settings.wake) + Number(S.settings.grace);
+}
+function streaks(){
+  let cur=0, best=0, run=0;
+  const keys = Object.keys(S.days).sort();
+  if(!keys.length) return {cur:0,best:0};
+  // recorrer día por día desde el primero hasta hoy
+  const start = new Date(keys[0]+'T12:00'); const end = new Date();
+  for(let d=new Date(start); todayKey(d)<=todayKey(end); d.setDate(d.getDate()+1)){
+    const k=todayKey(d);
+    if(wakeOnTime(S.days[k])){ run++; best=Math.max(best,run); }
+    else if(k!==todayKey()) run=0;
+  }
+  cur=run;
+  return {cur,best};
+}
+function renderWake(){
+  const d = day(), el = document.getElementById('wakeStatus');
+  document.getElementById('wakeTargetLbl').textContent = S.settings.wake;
+  if(d.wake){
+    const ok = wakeOnTime(d);
+    el.innerHTML = ok ? `<span class="wake-ok">✅ Te levantaste a las ${d.wake}. ¡Cumpliste!</span>`
+                      : `<span class="wake-bad">⚠️ Te levantaste a las ${d.wake}. Mañana sí.</span>`;
+    document.getElementById('wakeBtn').textContent = 'Corregir hora';
+  } else {
+    el.textContent = 'Aún no marcas tu hora de hoy.';
+    document.getElementById('wakeBtn').textContent = '¡Ya me levanté!';
+  }
+  const s = streaks();
+  document.getElementById('wakeStreak').textContent = s.cur;
+  document.getElementById('wakeBest').textContent = s.best;
+  const bed = (toMin(S.settings.wake) - 8*60 + 1440) % 1440;
+  document.getElementById('sleepTip').textContent =
+    `💡 Para dormir 8 h, acuéstate a las ${String(Math.floor(bed/60)).padStart(2,'0')}:${String(bed%60).padStart(2,'0')}.`;
+}
+document.getElementById('wakeBtn').onclick = () => {
+  const d = day(), now = new Date();
+  let t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  if(d.wake){ const v = prompt('¿A qué hora te levantaste? (HH:MM)', d.wake); if(!v || !/^\d{1,2}:\d{2}$/.test(v)) return; t = v.padStart(5,'0'); }
+  d.wake = t; save(); renderAll();
+};
+
+/* ---------- Frases / una cosa ---------- */
+let qi = Math.floor(Math.random()*QUOTES.length);
+const showQuote = () => document.getElementById('quote').textContent = '“'+QUOTES[qi]+'”';
+document.getElementById('newQuote').onclick = () => { qi=(qi+1)%QUOTES.length; showQuote(); };
+const one = document.getElementById('oneThing');
+one.value = S.oneThing || '';
+one.oninput = () => { S.oneThing = one.value; save(); };
+document.getElementById('twoMin').onclick = () => {
+  document.getElementById('timerMin').value='2'; document.getElementById('timerType').value='study';
+  resetTimer(); startTimer();
+};
+
+/* ---------- Temporizador ---------- */
+let tEnd=null, tLeft=50*60, tInt=null, tStartLeft=50*60;
+const timerEl = document.getElementById('timer');
+const showTimer = () => timerEl.textContent = String(Math.floor(tLeft/60)).padStart(2,'0')+':'+String(tLeft%60).padStart(2,'0');
+function startTimer(){
+  if(tInt){ // pausar
+    clearInterval(tInt); tInt=null; document.getElementById('timerStart').textContent='Seguir'; return;
+  }
+  tEnd = Date.now()+tLeft*1000;
+  document.getElementById('timerStart').textContent='Pausar';
+  document.getElementById('timerMsg').textContent = '🔒 Enfocado. Celular lejos.';
+  tInt = setInterval(()=>{
+    tLeft = Math.max(0, Math.round((tEnd-Date.now())/1000)); showTimer();
+    document.title = (tLeft?timerEl.textContent+' · ':'')+'Mi Rutina 3AM';
+    if(tLeft===0) finishTimer();
+  },250);
+}
+function finishTimer(){
+  clearInterval(tInt); tInt=null;
+  const mins = Math.round(tStartLeft/60), type = document.getElementById('timerType').value;
+  day()[type] += mins; save(); renderAll();
+  document.getElementById('timerMsg').textContent = `✅ +${mins} min de ${type==='study'?'estudio':'gym'}. ¡Bien hecho!`;
+  document.getElementById('timerStart').textContent='Empezar';
+  try{ const a=new AudioContext(),o=a.createOscillator(); o.connect(a.destination); o.frequency.value=880; o.start(); o.stop(a.currentTime+0.6);}catch(e){}
+  if('Notification' in window && Notification.permission==='granted') new Notification('⏰ ¡Bloque terminado!');
+  tLeft=tStartLeft; showTimer(); document.title='Mi Rutina 3AM';
+}
+function resetTimer(){
+  clearInterval(tInt); tInt=null;
+  tStartLeft = tLeft = Number(document.getElementById('timerMin').value)*60; showTimer();
+  document.getElementById('timerStart').textContent='Empezar'; document.title='Mi Rutina 3AM';
+}
+document.getElementById('timerStart').onclick = () => {
+  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  startTimer();
+};
+document.getElementById('timerReset').onclick = resetTimer;
+document.getElementById('timerMin').onchange = resetTimer;
+
+/* ---------- Horas ---------- */
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+  const v = Number(document.getElementById('addMin').value);
+  if(!v) return; day()[b.dataset.add] += v; document.getElementById('addMin').value=''; save(); renderAll();
+});
+function dayScore(k){
+  const d = S.days[k]; if(!d) return 0;
+  const sg = S.settings.studyH*60, gg = S.settings.gymMin;
+  const parts = [
+    wakeOnTime(d)?1:0,
+    sg ? Math.min(1,d.study/sg) : 1,
+    gg ? Math.min(1,d.gym/gg) : 1,
+    S.routine.length ? d.done.filter(id=>S.routine.some(r=>r.id===id)).length/S.routine.length : 1
+  ];
+  return Math.round(parts.reduce((a,b)=>a+b,0)/parts.length*100);
+}
+function renderHours(){
+  const d=day(), sg=S.settings.studyH*60, gg=S.settings.gymMin;
+  document.getElementById('studyLbl').textContent = fmtHM(d.study);
+  document.getElementById('studyGoalLbl').textContent = fmtHM(sg);
+  document.getElementById('studyBar').style.width = Math.min(100, sg? d.study/sg*100 : 100)+'%';
+  document.getElementById('gymLbl').textContent = d.gym+'m';
+  document.getElementById('gymGoalLbl').textContent = gg+'m';
+  document.getElementById('gymBar').style.width = Math.min(100, gg? d.gym/gg*100 : 100)+'%';
+  document.getElementById('dayScore').textContent = dayScore(todayKey())+'%';
+  const done = d.done.filter(id=>S.routine.some(r=>r.id===id)).length;
+  document.getElementById('tasksDone').textContent = done+'/'+S.routine.length;
+}
+
+/* ---------- Rutina ---------- */
+function currentTaskId(){
+  const now = new Date(), m = now.getHours()*60+now.getMinutes();
+  const sorted = [...S.routine].sort((a,b)=>toMin(a.time)-toMin(b.time));
+  let cur = null; for(const r of sorted) if(toMin(r.time)<=m) cur=r;
+  return cur ? cur.id : null;
+}
+function renderTasks(){
+  const ul = document.getElementById('tasks'), d=day(), nowId=currentTaskId();
+  ul.innerHTML='';
+  [...S.routine].sort((a,b)=>toMin(a.time)-toMin(b.time)).forEach(r=>{
+    const li=document.createElement('li');
+    const isDone = d.done.includes(r.id);
+    li.className = (isDone?'done ':'')+(r.id===nowId?'now':'');
+    li.innerHTML = `<input type="checkbox" ${isDone?'checked':''}><span class="time">${r.time}</span><span class="t"></span><button class="del" title="Borrar">✕</button>`;
+    li.querySelector('.t').textContent = r.text;
+    li.querySelector('input').onchange = e => {
+      d.done = e.target.checked ? [...d.done, r.id] : d.done.filter(x=>x!==r.id); save(); renderAll();
+    };
+    li.querySelector('.del').onclick = () => { if(confirm('¿Borrar "'+r.text+'"?')){ S.routine=S.routine.filter(x=>x.id!==r.id); save(); renderAll(); } };
+    ul.appendChild(li);
+  });
+  const cur = S.routine.find(r=>r.id===nowId);
+  document.getElementById('nowTag').textContent = cur ? 'Ahora: '+cur.text : '';
+}
+document.getElementById('addTask').onclick = () => {
+  const text = document.getElementById('newTask').value.trim(), time=document.getElementById('newTime').value;
+  if(!text || !time) return;
+  S.routine.push({id:Date.now(),time,text}); document.getElementById('newTask').value=''; save(); renderAll();
+};
+document.getElementById('newTask').onkeydown = e => { if(e.key==='Enter') document.getElementById('addTask').click(); };
+
+/* ---------- Semana ---------- */
+function renderWeek(){
+  const w=document.getElementById('week'); w.innerHTML='';
+  const names=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  for(let i=6;i>=0;i--){
+    const dt=new Date(); dt.setDate(dt.getDate()-i); const k=todayKey(dt), d=S.days[k];
+    const el=document.createElement('div'); el.className='day';
+    const studyOk = d && d.study >= S.settings.studyH*60 && S.settings.studyH>0;
+    const gymOk = d && d.gym > 0;
+    el.innerHTML = `<div class="d">${i===0?'Hoy':names[dt.getDay()]}</div>
+      <div><i class="dot ${wakeOnTime(d)?'on':''}"></i><i class="dot ${studyOk?'s':''}"></i><i class="dot ${gymOk?'g':''}"></i></div>
+      <div class="score">${dayScore(k)}%</div>
+      <div class="d">${d?fmtHM(d.study):'—'}</div>`;
+    w.appendChild(el);
+  }
+}
+
+/* ---------- Ajustes ---------- */
+const sets = {setWake:'wake',setGrace:'grace',setStudy:'studyH',setGym:'gymMin'};
+for(const [id,k] of Object.entries(sets)){
+  const el=document.getElementById(id); el.value=S.settings[k];
+  el.onchange=()=>{ S.settings[k] = el.type==='time'? el.value : Number(el.value); save(); renderAll(); };
+}
+document.getElementById('exportBtn').onclick = () => {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download='rutina-'+todayKey()+'.json'; a.click();
+};
+document.getElementById('importFile').onchange = e => {
+  const f=e.target.files[0]; if(!f) return;
+  f.text().then(t=>{ try{ S=JSON.parse(t); save(); location.reload(); }catch(err){ alert('Archivo no válido'); } });
+};
+document.getElementById('resetRoutine').onclick = () => {
+  if(!confirm('¿Volver a la rutina por defecto? (tus horas y racha se quedan)')) return;
+  S.routine = freshState().routine; save(); renderAll();
+};
+
+/* ---------- Reloj ---------- */
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent = n.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+' · '+n.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+}
+let lastDay = todayKey();
+setInterval(()=>{ tick(); if(todayKey()!==lastDay){ lastDay=todayKey(); renderAll(); } else renderTasks(); }, 30000);
+
+function renderAll(){ renderWake(); renderHours(); renderTasks(); renderWeek(); }
+tick(); showQuote(); showTimer(); renderAll();
+</script>
+</body>
+</html>
