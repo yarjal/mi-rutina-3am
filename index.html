@@ -5,91 +5,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi Rutina 3AM</title>
 <meta name="description" content="Rutina diaria: levantarse a las 3am, estudio, gym y cero procrastinación.">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0b0d24">
+<link rel="icon" href="img/icono.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0f1115; --card:#181b22; --card2:#20242d; --text:#eef0f4; --muted:#9aa1ad;
-  --line:#2a2f3a; --accent:#ff7a1a; --ok:#2ecc71; --bad:#ff4d4f; --study:#5b9dff; --gym:#ff7a1a;
+  --bg:#0b0d1e; --card:rgba(30,26,58,.62); --card2:rgba(255,255,255,.06); --text:#f3f1fa; --muted:#a9a6c2;
+  --line:rgba(255,255,255,.09); --accent:#ff7a1a; --ok:#43e97b; --bad:#ff5f6d; --study:#4facfe; --gym:#ff7a1a;
+  --g-fire:linear-gradient(135deg,#ffb347,#ff5f6d); --g-study:linear-gradient(135deg,#4facfe,#00f2fe);
+  --g-ok:linear-gradient(135deg,#43e97b,#38f9d7); --g-purple:linear-gradient(135deg,#c471f5,#fa71cd);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:960px;margin:0 auto;padding:16px}
-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
-h1{font-size:1.5rem;margin:0}
-h1 span{color:var(--accent)}
-h2{font-size:1.05rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
-.clock{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.95rem}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);font:16px/1.5 "Outfit",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);
+  background-image:radial-gradient(900px 500px at 10% -10%,rgba(196,113,245,.18),transparent 60%),
+    radial-gradient(800px 500px at 100% 20%,rgba(79,172,254,.14),transparent 60%),
+    radial-gradient(900px 600px at 50% 110%,rgba(255,122,26,.16),transparent 60%);
+  background-attachment:fixed;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:16px}
+
+/* HERO */
+.hero{position:relative;border-radius:24px;overflow:hidden;min-height:300px;margin:6px 0 22px;
+  display:flex;align-items:flex-end;box-shadow:0 20px 60px rgba(0,0,0,.45);border:1px solid var(--line)}
+.hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,36,0) 30%,rgba(11,13,36,.75))}
+.hero-in{position:relative;z-index:1;padding:24px;width:100%;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+h1{font-size:clamp(2rem,6vw,3.4rem);line-height:1.05;margin:0;font-weight:800;letter-spacing:-.5px;text-shadow:0 4px 24px rgba(0,0,0,.5)}
+h1 span{background:var(--g-fire);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:6px 0 0;color:#e4def5;max-width:440px}
+.clock{font-variant-numeric:tabular-nums;color:#fff;font-size:.95rem;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);
+  padding:8px 14px;border-radius:99px;border:1px solid rgba(255,255,255,.15);text-transform:capitalize}
+
+h2{font-size:1.15rem;margin:0 0 14px;display:flex;align-items:center;gap:12px;font-weight:800;flex-wrap:wrap}
+h2 .ico{width:46px;height:46px;flex:none;filter:drop-shadow(0 6px 12px rgba(0,0,0,.35));transition:transform .3s}
+.card:hover h2 .ico{transform:rotate(-8deg) scale(1.08)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
+.card{position:relative;background:var(--card);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  transition:transform .25s,box-shadow .25s,border-color .25s;animation:up .6s both}
+.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.35);border-color:rgba(255,255,255,.18)}
+.card::before{content:"";position:absolute;left:20px;right:20px;top:0;height:3px;border-radius:0 0 4px 4px;background:var(--band,var(--g-fire))}
+.c-wake{--band:var(--g-fire)} .c-focus{--band:var(--g-purple)} .c-timer{--band:var(--g-study)} .c-today{--band:var(--g-ok)}
+.c-tasks{--band:var(--g-ok)} .c-week{--band:var(--g-fire)} .c-set{--band:linear-gradient(135deg,#c471f5,#4facfe)}
+.grid .card:nth-child(2){animation-delay:.06s}.grid .card:nth-child(3){animation-delay:.12s}.grid .card:nth-child(4){animation-delay:.18s}
+.grid .card:nth-child(5){animation-delay:.24s}.grid .card:nth-child(6){animation-delay:.3s}.grid .card:nth-child(7){animation-delay:.36s}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .full{grid-column:1/-1}
-.btn{border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--card2);color:var(--text)}
-.btn:hover{filter:brightness(1.15)}
-.btn.primary{background:var(--accent);color:#111}
-.btn.study{background:var(--study);color:#06122a}
-.btn.ok{background:var(--ok);color:#06210f}
-.btn.small{padding:6px 10px;font-size:.85rem}
+
+.btn{border:0;border-radius:12px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;background:var(--card2);color:var(--text);
+  border:1px solid var(--line);transition:transform .15s,filter .15s,box-shadow .15s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--g-fire);color:#1b0b12;border:0;box-shadow:0 8px 20px rgba(255,95,109,.35)}
+.btn.study{background:var(--g-study);color:#04203a;border:0;box-shadow:0 8px 20px rgba(79,172,254,.3)}
+.btn.ok{background:var(--g-ok);color:#05261a;border:0}
+.btn.gym{background:var(--g-fire);color:#1b0b12;border:0}
+.btn.small{padding:7px 12px;font-size:.88rem}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.muted{color:var(--muted);font-size:.9rem}
-.big{font-size:2.6rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
-.stat{display:flex;flex-direction:column;background:var(--card2);border-radius:10px;padding:10px 12px;flex:1;min-width:90px}
-.stat b{font-size:1.4rem}
+.muted{color:var(--muted);font-size:.92rem}
+.big{font-size:3.4rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;text-align:center;
+  background:var(--g-study);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat{display:flex;flex-direction:column;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;flex:1;min-width:90px}
+.stat b{font-size:1.6rem;font-weight:800}
 .stat small{color:var(--muted)}
-.bar{height:10px;background:var(--card2);border-radius:99px;overflow:hidden;margin:6px 0}
-.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
-.bar.study i{background:var(--study)}
+.bar{height:12px;background:var(--card2);border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.bar i{display:block;height:100%;background:var(--g-fire);width:0;transition:width .6s cubic-bezier(.2,.8,.2,1);border-radius:99px}
+.bar.study i{background:var(--g-study)}
+.sub{display:flex;align-items:center;gap:8px}
+.sub img{width:26px;height:26px}
 ul.tasks{list-style:none;margin:0;padding:0}
-ul.tasks li{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line)}
-ul.tasks li.now{background:rgba(255,122,26,.12);border-radius:8px}
+ul.tasks li{display:flex;align-items:center;gap:12px;padding:10px 10px;border-bottom:1px solid var(--line);border-radius:10px;transition:background .2s}
+ul.tasks li:hover{background:var(--card2)}
+ul.tasks li.now{background:linear-gradient(90deg,rgba(255,122,26,.22),rgba(255,122,26,.03));box-shadow:inset 3px 0 0 var(--accent)}
 ul.tasks li.done .t{text-decoration:line-through;color:var(--muted)}
-ul.tasks .time{font-variant-numeric:tabular-nums;color:var(--muted);width:48px;flex:none;font-size:.9rem}
+ul.tasks .time{font-variant-numeric:tabular-nums;color:var(--muted);width:52px;flex:none;font-size:.9rem;font-weight:600}
 ul.tasks .t{flex:1}
-ul.tasks .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem}
-input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none}
-input[type=text],input[type=time],input[type=number],select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;min-width:0}
+ul.tasks .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;opacity:.5}
+ul.tasks li:hover .del{opacity:1}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none;cursor:pointer}
+input[type=text],input[type=time],input[type=number],select{background:rgba(0,0,0,.25);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:inherit;min-width:0;color-scheme:dark}
+input:focus,select:focus{outline:2px solid rgba(196,113,245,.6);outline-offset:1px}
 .wake-ok{color:var(--ok);font-weight:700}
 .wake-bad{color:var(--bad);font-weight:700}
-.quote{font-style:italic;color:var(--text);border-left:3px solid var(--accent);padding-left:10px;margin:0}
-.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.day{background:var(--card2);border-radius:10px;padding:8px 4px;text-align:center;font-size:.8rem}
+.quote{font-size:1.1rem;font-weight:600;color:var(--text);margin:0;padding:14px 16px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(196,113,245,.18),rgba(250,113,205,.08));border:1px solid rgba(196,113,245,.25)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.day{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center;font-size:.8rem}
+.day:last-child{border-color:rgba(255,122,26,.5);background:rgba(255,122,26,.08)}
 .day .d{color:var(--muted)}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--line);margin:2px}
-.dot.on{background:var(--ok)}
-.dot.s{background:var(--study)}
-.dot.g{background:var(--gym)}
-.score{font-size:1.1rem;font-weight:800;margin-top:4px}
-.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
-.tag{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--card2);font-size:.8rem;color:var(--muted)}
-footer{margin:24px 0;text-align:center}
-@media (max-width:520px){.big{font-size:2.1rem}.wrap{padding:12px}}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.12);margin:2px}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.dot.s{background:var(--study);box-shadow:0 0 8px var(--study)}
+.dot.g{background:var(--gym);box-shadow:0 0 8px var(--gym)}
+.score{font-size:1.15rem;font-weight:800;margin-top:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.tag:empty{display:none}
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;background:rgba(255,122,26,.15);color:#ffc08f;font-size:.8rem;font-weight:600}
+footer{margin:28px 0 12px;text-align:center;font-weight:600}
+@media (max-width:520px){.big{font-size:2.6rem}.wrap{padding:12px}.hero{min-height:240px}.hero-in{padding:18px}.week{gap:4px}.day{font-size:.72rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>⏰ Mi Rutina <span>3AM</span></h1>
-    <div class="clock" id="clock"></div>
+  <header class="hero">
+    <img src="img/hero.svg" alt="Cielo de madrugada con luna y amanecer">
+    <div class="hero-in">
+      <div>
+        <h1>Mi Rutina <span>3AM</span></h1>
+        <p>Mientras otros duermen, yo avanzo. Estudio, gym y cero procrastinación.</p>
+      </div>
+      <div class="clock" id="clock"></div>
+    </div>
   </header>
 
   <div class="grid">
     <!-- DESPERTAR -->
-    <section class="card">
-      <h2>🌅 Levantarme a las <span id="wakeTargetLbl">03:00</span></h2>
+    <section class="card c-wake">
+      <h2><img class="ico" src="img/alarma.svg" alt="">Levantarme a las <span id="wakeTargetLbl">03:00</span></h2>
       <div id="wakeStatus" class="muted">Aún no marcas tu hora de hoy.</div>
-      <div class="row" style="margin:12px 0">
+      <div class="row" style="margin:14px 0">
         <button class="btn primary" id="wakeBtn">¡Ya me levanté!</button>
       </div>
       <div class="row">
         <div class="stat"><b id="wakeStreak">0</b><small>racha 🔥</small></div>
-        <div class="stat"><b id="wakeBest">0</b><small>mejor racha</small></div>
+        <div class="stat"><b id="wakeBest">0</b><small>mejor racha 🏆</small></div>
       </div>
       <p class="muted" id="sleepTip" style="margin-bottom:0"></p>
     </section>
 
     <!-- ANTI PROCRASTINACION -->
-    <section class="card">
-      <h2>🚫 Cero procrastinación</h2>
+    <section class="card c-focus">
+      <h2><img class="ico" src="img/enfoque.svg" alt="">Cero procrastinación</h2>
       <p class="quote" id="quote"></p>
-      <div style="margin-top:12px">
+      <div style="margin-top:14px">
         <div class="muted">¿Qué es lo ÚNICO que debo hacer ahora?</div>
         <input type="text" id="oneThing" placeholder="Ej: terminar capítulo 3" style="width:100%;margin-top:6px">
       </div>
@@ -101,8 +153,8 @@ footer{margin:24px 0;text-align:center}
     </section>
 
     <!-- TIMER -->
-    <section class="card">
-      <h2>⏱️ Temporizador de enfoque</h2>
+    <section class="card c-timer">
+      <h2><img class="ico" src="img/timer.svg" alt="">Temporizador de enfoque</h2>
       <div class="row">
         <select id="timerType">
           <option value="study">📚 Estudio</option>
@@ -115,25 +167,25 @@ footer{margin:24px 0;text-align:center}
           <option value="2">2 min</option>
         </select>
       </div>
-      <div class="big" id="timer" style="margin:10px 0">50:00</div>
-      <div class="row">
+      <div class="big" id="timer" style="margin:12px 0">50:00</div>
+      <div class="row" style="justify-content:center">
         <button class="btn study" id="timerStart">Empezar</button>
         <button class="btn" id="timerReset">Reiniciar</button>
       </div>
-      <p class="muted" id="timerMsg" style="margin-bottom:0">Al terminar, el tiempo se suma solo a tus horas de hoy.</p>
+      <p class="muted" id="timerMsg" style="margin-bottom:0;text-align:center">Al terminar, el tiempo se suma solo a tus horas de hoy.</p>
     </section>
 
     <!-- HORAS -->
-    <section class="card">
-      <h2>📊 Hoy</h2>
-      <div class="muted">📚 Estudio (lo que me gusta): <b id="studyLbl">0h 0m</b> / <span id="studyGoalLbl"></span></div>
+    <section class="card c-today">
+      <h2><img class="ico" src="img/progreso.svg" alt="">Hoy</h2>
+      <div class="muted sub"><img src="img/libros.svg" alt="">Estudio: <b id="studyLbl">0h 0m</b> / <span id="studyGoalLbl"></span></div>
       <div class="bar study"><i id="studyBar"></i></div>
-      <div class="muted">🏋️ Gym: <b id="gymLbl">0m</b> / <span id="gymGoalLbl"></span></div>
+      <div class="muted sub"><img src="img/pesa.svg" alt="">Gym: <b id="gymLbl">0m</b> / <span id="gymGoalLbl"></span></div>
       <div class="bar"><i id="gymBar"></i></div>
-      <div class="row" style="margin-top:10px">
+      <div class="row">
         <input type="number" id="addMin" min="1" placeholder="min" style="width:80px">
         <button class="btn small study" data-add="study">+ Estudio</button>
-        <button class="btn small" data-add="gym" style="background:var(--gym);color:#111">+ Gym</button>
+        <button class="btn small gym" data-add="gym">+ Gym</button>
       </div>
       <div class="row" style="margin-top:12px">
         <div class="stat"><b id="dayScore">0%</b><small>día cumplido</small></div>
@@ -142,8 +194,8 @@ footer{margin:24px 0;text-align:center}
     </section>
 
     <!-- RUTINA -->
-    <section class="card full">
-      <h2>📋 Rutina del día <span class="tag" id="nowTag"></span></h2>
+    <section class="card full c-tasks">
+      <h2><img class="ico" src="img/rutina.svg" alt="">Rutina del día <span class="tag" id="nowTag"></span></h2>
       <ul class="tasks" id="tasks"></ul>
       <div class="row" style="margin-top:12px">
         <input type="time" id="newTime" value="12:00">
@@ -153,8 +205,8 @@ footer{margin:24px 0;text-align:center}
     </section>
 
     <!-- SEMANA -->
-    <section class="card full">
-      <h2>📅 Últimos 7 días</h2>
+    <section class="card full c-week">
+      <h2><img class="ico" src="img/semana.svg" alt="">Últimos 7 días</h2>
       <div class="week" id="week"></div>
       <div class="legend muted">
         <span><i class="dot on"></i> me levanté a tiempo</span>
@@ -164,8 +216,8 @@ footer{margin:24px 0;text-align:center}
     </section>
 
     <!-- AJUSTES -->
-    <section class="card full">
-      <h2>⚙️ Mis metas</h2>
+    <section class="card full c-set">
+      <h2><img class="ico" src="img/metas.svg" alt="">Mis metas</h2>
       <div class="row">
         <label class="muted">Despertar <input type="time" id="setWake"></label>
         <label class="muted">Tolerancia (min) <input type="number" id="setGrace" min="0" style="width:70px"></label>
