@@ -241,24 +241,12 @@ footer{margin:28px 0 12px;text-align:center;font-weight:600}
     <section class="card full c-sync">
       <h2>☁️ Sincronizar celular y compu</h2>
       <div id="syncOff">
-        <p class="muted" style="margin-top:0">Guarda tus datos en tu cuenta de GitHub (en un Gist privado) para tener lo mismo en todos tus dispositivos.</p>
-        <ol class="muted">
-          <li>Abre <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Mi%20Rutina%203AM" target="_blank" rel="noopener">este link</a> con tu sesión de GitHub iniciada.</li>
-          <li>En <b>Expiration</b> elige <b>No expiration</b>. Deja marcado solo <b>gist</b>, baja y toca <b>Generate token</b>.</li>
-          <li>Copia el token (empieza con <code>ghp_</code>), pégalo aquí y toca <b>Conectar</b>.</li>
-          <li>En tu otro dispositivo abre esta misma página y pega el mismo token (o crea otro con el mismo link).</li>
-        </ol>
-        <div class="row">
-          <input type="password" id="syncToken" placeholder="ghp_..." autocomplete="off" style="flex:1;min-width:180px">
-          <button class="btn small ok" id="syncConnect">Conectar</button>
-        </div>
+        <p class="muted" style="margin-top:0">Entra con tu cuenta de Google y tus datos se guardan en la nube: lo que hagas en el celular aparece al instante en la compu, y al revés.</p>
+        <button class="btn study" id="syncLogin">Entrar con Google</button>
       </div>
       <div id="syncOn" hidden>
-        <p class="muted" style="margin-top:0">Conectado. Cada cambio se sube solo y al abrir la página se bajan los cambios del otro dispositivo.</p>
-        <div class="row">
-          <button class="btn small study" id="syncBtn">Sincronizar ahora</button>
-          <button class="btn small" id="syncOut">Desconectar este dispositivo</button>
-        </div>
+        <p class="muted" style="margin-top:0">Conectado como <b id="syncUser"></b>. Los cambios se sincronizan en tiempo real.</p>
+        <button class="btn small" id="syncOut">Cerrar sesión en este dispositivo</button>
       </div>
       <p class="muted" id="syncStatus" style="margin-bottom:0"></p>
     </section>
@@ -543,26 +531,11 @@ function refreshUI(){
   renderAll();
 }
 
-/* ---------- Sincronización con GitHub Gist ---------- */
-const SYNC_KEY = 'rutina3am_sync', FILE = 'rutina3am.json', API = 'https://api.github.com';
-let sync = {}; try { sync = JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch(e){}
-const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e){} };
+/* ---------- Sincronización (la conecta el módulo de Firebase de abajo) ---------- */
+let pushHook = null;
+function schedulePush(){ if(pushHook) pushHook(); }
 const syncStatus = t => document.getElementById('syncStatus').textContent = t;
 const hhmm = () => new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
-
-async function gh(path, opt={}){
-  const r = await fetch(API+path, {...opt, cache:'no-store', headers:{
-    'Authorization':'Bearer '+sync.token, 'Accept':'application/vnd.github+json',
-    ...(opt.body ? {'Content-Type':'application/json'} : {}) }});
-  if(!r.ok) throw new Error(String(r.status));
-  return r.json();
-}
-async function readGist(){
-  const g = await gh('/gists/'+sync.gistId), f = g.files && g.files[FILE];
-  if(!f) throw new Error('404');
-  const txt = f.truncated ? await (await fetch(f.raw_url,{cache:'no-store'})).text() : f.content;
-  return JSON.parse(txt);
-}
 // Une los datos de la nube con los locales: en cada campo gana el cambio más reciente
 function merge(R){
   if(!R || !R.days) return;
@@ -573,66 +546,72 @@ function merge(R){
     DAY_F.forEach(f => { if(r[f] !== undefined && (r_t[f]||0) >= (l.t[f]||0)){ l[f] = r[f]; l.t[f] = r_t[f]||0; } });
   }
 }
-let busy = false, again = false, pushTimer = null;
-async function syncNow(){
-  if(!sync.token || !sync.gistId) return;
-  if(busy){ again = true; return; }
-  busy = true; syncStatus('⏳ Sincronizando…');
-  try{
-    const R = await readGist(), before = sig(S);
-    merge(R); takeSnap(); store();
-    if(sig(S) !== before) refreshUI();
-    if(sig(S) !== sig(R))
-      await gh('/gists/'+sync.gistId, {method:'PATCH', body:JSON.stringify({files:{[FILE]:{content:JSON.stringify(S)}}})});
-    syncStatus('✅ Sincronizado a las '+hhmm());
-  }catch(e){
-    syncStatus(e.message==='401' ? '⚠️ El token ya no sirve. Desconecta y pega uno nuevo.'
-      : e.message==='404' ? '⚠️ No encuentro tus datos en GitHub. Desconecta y vuelve a conectar.'
-      : '⚠️ Sin conexión. Tus cambios están guardados aquí y se suben cuando vuelva el internet.');
-  }
-  busy = false;
-  if(again){ again = false; syncNow(); }
-}
-function schedulePush(){ if(!sync.gistId) return; clearTimeout(pushTimer); pushTimer = setTimeout(syncNow, 1500); }
 
-function renderSyncUI(){
-  const on = !!(sync.token && sync.gistId);
-  document.getElementById('syncOff').hidden = on;
-  document.getElementById('syncOn').hidden = !on;
-}
-async function connect(token){
-  sync = {token}; syncStatus('⏳ Conectando…');
-  try{
-    const list = await gh('/gists?per_page=100');
-    const g = list.find(x => x.files && x.files[FILE]);
-    if(g) sync.gistId = g.id;
-    else {
-      const n = await gh('/gists', {method:'POST', body:JSON.stringify({
-        description:'Mi Rutina 3AM (datos)', public:false, files:{[FILE]:{content:JSON.stringify(S)}} })});
-      sync.gistId = n.id;
-    }
-    saveSync(); renderSyncUI(); await syncNow();
-  }catch(e){
-    sync = {}; saveSync(); renderSyncUI();
-    syncStatus(e.message==='401' ? '⚠️ Ese token no es válido. Revisa que lo copiaste completo.'
-      : '⚠️ No se pudo conectar ('+e.message+'). Revisa tu internet y que el token tenga el permiso "gist".');
+tick(); showQuote(); showTimer(); renderAll();
+</script>
+
+<!-- ===== Firebase: pega aquí la configuración de tu proyecto ===== -->
+<script type="module">
+const firebaseConfig = null; /* REEMPLAZAR con { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." } */
+
+const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const $ = id => document.getElementById(id);
+if(!firebaseConfig){
+  $('syncLogin').disabled = true;
+  syncStatus('La sincronización todavía no está configurada.');
+} else {
+  try {
+    const { initializeApp } = await import(V+'firebase-app.js');
+    const { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } = await import(V+'firebase-auth.js');
+    const { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } = await import(V+'firebase-firestore.js');
+    const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    let unsub = null, ref = null, timer = null, lastRemote = '';
+
+    const push = async () => {
+      if(!ref) return;
+      const data = JSON.stringify(S);
+      if(data === lastRemote) return;
+      try { lastRemote = data; await setDoc(ref, { data, updated: serverTimestamp() }); syncStatus('✅ Sincronizado a las '+hhmm()); }
+      catch(e){ lastRemote = ''; syncStatus('⚠️ No se pudo subir ('+e.code+'). Se reintenta con tu próximo cambio.'); }
+    };
+    pushHook = () => { clearTimeout(timer); timer = setTimeout(push, 400); };
+
+    getRedirectResult(auth).catch(e => syncStatus('⚠️ No se pudo entrar: '+e.code));
+    $('syncLogin').onclick = async () => {
+      try { await signInWithPopup(auth, provider); }
+      catch(e){
+        if(['auth/popup-blocked','auth/operation-not-supported-in-environment','auth/cancelled-popup-request'].includes(e.code)) signInWithRedirect(auth, provider);
+        else if(e.code !== 'auth/popup-closed-by-user') syncStatus('⚠️ No se pudo entrar: '+e.code);
+      }
+    };
+    $('syncOut').onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, user => {
+      if(unsub){ unsub(); unsub = null; }
+      $('syncOff').hidden = !!user; $('syncOn').hidden = !user;
+      if(!user){ ref = null; syncStatus('Sin conectar: tus datos se guardan solo en este navegador.'); return; }
+      $('syncUser').textContent = user.email || user.displayName || 'tu cuenta';
+      syncStatus('⏳ Sincronizando…');
+      ref = doc(db, 'rutinas', user.uid);
+      unsub = onSnapshot(ref, snap => {
+        if(snap.metadata.hasPendingWrites) return;
+        if(snap.exists()){
+          const txt = snap.data().data || '';
+          let R = null; try { R = JSON.parse(txt); } catch(e){}
+          lastRemote = txt;
+          const before = sig(S);
+          merge(R); takeSnap(); store();
+          if(sig(S) !== before) refreshUI();
+        }
+        push();                       // sube lo que este dispositivo tenga de nuevo
+        syncStatus('✅ Sincronizado a las '+hhmm());
+      }, e => syncStatus('⚠️ Error de sincronización: '+e.code));
+    });
+  } catch(e){
+    syncStatus('⚠️ No se pudo cargar Firebase. Revisa tu internet.');
   }
 }
-document.getElementById('syncConnect').onclick = () => {
-  const t = document.getElementById('syncToken').value.trim();
-  if(!t) return syncStatus('Pega tu token primero.');
-  document.getElementById('syncToken').value = '';
-  connect(t);
-};
-document.getElementById('syncBtn').onclick = syncNow;
-document.getElementById('syncOut').onclick = () => {
-  if(!confirm('¿Desconectar este dispositivo? Tus datos se quedan aquí y en GitHub.')) return;
-  sync = {}; saveSync(); renderSyncUI(); syncStatus('Desconectado.');
-};
-document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') syncNow(); });
-setInterval(() => { if(document.visibilityState==='visible') syncNow(); }, 60000);
-
-tick(); showQuote(); showTimer(); renderAll(); renderSyncUI(); syncNow();
 </script>
 </body>
 </html>
