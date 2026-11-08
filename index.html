@@ -49,6 +49,11 @@ h2 .ico{width:46px;height:46px;flex:none;filter:drop-shadow(0 6px 12px rgba(0,0,
 .card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.35);border-color:rgba(255,255,255,.18)}
 .card::before{content:"";position:absolute;left:20px;right:20px;top:0;height:3px;border-radius:0 0 4px 4px;background:var(--band,var(--g-fire))}
 .c-wake{--band:var(--g-fire)} .c-focus{--band:var(--g-purple)} .c-timer{--band:var(--g-study)} .c-today{--band:var(--g-ok)}
+.c-sync{--band:var(--g-study)}
+.c-sync a{color:#7cc4ff}
+.c-sync ol{margin:8px 0 12px;padding-left:20px}
+.c-sync ol li{margin:4px 0}
+.c-sync code{background:var(--card2);padding:1px 6px;border-radius:6px}
 .c-tasks{--band:var(--g-ok)} .c-week{--band:var(--g-fire)} .c-set{--band:linear-gradient(135deg,#c471f5,#4facfe)}
 .grid .card:nth-child(2){animation-delay:.06s}.grid .card:nth-child(3){animation-delay:.12s}.grid .card:nth-child(4){animation-delay:.18s}
 .grid .card:nth-child(5){animation-delay:.24s}.grid .card:nth-child(6){animation-delay:.3s}.grid .card:nth-child(7){animation-delay:.36s}
@@ -86,7 +91,7 @@ ul.tasks .t{flex:1}
 ul.tasks .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;opacity:.5}
 ul.tasks li:hover .del{opacity:1}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none;cursor:pointer}
-input[type=text],input[type=time],input[type=number],select{background:rgba(0,0,0,.25);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:inherit;min-width:0;color-scheme:dark}
+input[type=text],input[type=password],input[type=time],input[type=number],select{background:rgba(0,0,0,.25);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:inherit;min-width:0;color-scheme:dark}
 input:focus,select:focus{outline:2px solid rgba(196,113,245,.6);outline-offset:1px}
 .wake-ok{color:var(--ok);font-weight:700}
 .wake-bad{color:var(--bad);font-weight:700}
@@ -229,7 +234,33 @@ footer{margin:28px 0 12px;text-align:center;font-weight:600}
         <label class="btn small">Importar<input type="file" id="importFile" accept=".json" hidden></label>
         <button class="btn small" id="resetRoutine">Rutina por defecto</button>
       </div>
-      <p class="muted" style="margin-bottom:0">Tus datos se guardan solo en este navegador.</p>
+      <p class="muted" style="margin-bottom:0">Tus datos se guardan en este navegador. Para verlos en el celular y la compu, activa la sincronización de abajo.</p>
+    </section>
+
+    <!-- SINCRONIZAR -->
+    <section class="card full c-sync">
+      <h2>☁️ Sincronizar celular y compu</h2>
+      <div id="syncOff">
+        <p class="muted" style="margin-top:0">Guarda tus datos en tu cuenta de GitHub (en un Gist privado) para tener lo mismo en todos tus dispositivos.</p>
+        <ol class="muted">
+          <li>Abre <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Mi%20Rutina%203AM" target="_blank" rel="noopener">este link</a> con tu sesión de GitHub iniciada.</li>
+          <li>En <b>Expiration</b> elige <b>No expiration</b>. Deja marcado solo <b>gist</b>, baja y toca <b>Generate token</b>.</li>
+          <li>Copia el token (empieza con <code>ghp_</code>), pégalo aquí y toca <b>Conectar</b>.</li>
+          <li>En tu otro dispositivo abre esta misma página y pega el mismo token (o crea otro con el mismo link).</li>
+        </ol>
+        <div class="row">
+          <input type="password" id="syncToken" placeholder="ghp_..." autocomplete="off" style="flex:1;min-width:180px">
+          <button class="btn small ok" id="syncConnect">Conectar</button>
+        </div>
+      </div>
+      <div id="syncOn" hidden>
+        <p class="muted" style="margin-top:0">Conectado. Cada cambio se sube solo y al abrir la página se bajan los cambios del otro dispositivo.</p>
+        <div class="row">
+          <button class="btn small study" id="syncBtn">Sincronizar ahora</button>
+          <button class="btn small" id="syncOut">Desconectar este dispositivo</button>
+        </div>
+      </div>
+      <p class="muted" id="syncStatus" style="margin-bottom:0"></p>
     </section>
   </div>
   <footer class="muted">Disciplina &gt; motivación 💪</footer>
@@ -280,8 +311,28 @@ function freshState(){
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || freshState(); } catch(e){ S = freshState(); }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
-const day = (k=todayKey()) => (S.days[k] ||= {wake:null,study:0,gym:0,done:[]});
+/* Cada campo guarda cuándo cambió (t), para unir datos de varios dispositivos sin perder nada */
+const EMPTY = {wake:null,study:0,gym:0,done:[]};
+const DAY_F = ['wake','study','gym','done'], META_F = ['settings','routine','oneThing'];
+const sig = v => JSON.stringify(v);
+let snap = {meta:{},days:{}};
+function takeSnap(){
+  snap = {meta:{},days:{}};
+  META_F.forEach(f => snap.meta[f] = sig(S[f]));
+  for(const k in S.days){ snap.days[k] = {}; DAY_F.forEach(f => snap.days[k][f] = sig(S.days[k][f])); }
+}
+function stamp(){
+  const now = Date.now(); S.t ||= {};
+  META_F.forEach(f => { if(sig(S[f]) !== snap.meta[f]) S.t[f] = now; });
+  for(const k in S.days){
+    const d = S.days[k], p = snap.days[k] || {}; d.t ||= {};
+    DAY_F.forEach(f => { if(sig(d[f]) !== (p[f] ?? sig(EMPTY[f]))) d.t[f] = now; });
+  }
+}
+const store = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+const save = () => { stamp(); takeSnap(); store(); schedulePush(); };
+const day = (k=todayKey()) => (S.days[k] ||= structuredClone(EMPTY));
+takeSnap();
 
 /* ---------- Despertar ---------- */
 function wakeOnTime(d){
@@ -470,7 +521,7 @@ document.getElementById('exportBtn').onclick = () => {
 };
 document.getElementById('importFile').onchange = e => {
   const f=e.target.files[0]; if(!f) return;
-  f.text().then(t=>{ try{ S=JSON.parse(t); save(); location.reload(); }catch(err){ alert('Archivo no válido'); } });
+  f.text().then(t=>{ try{ const R=JSON.parse(t); if(!R.days) throw 0; S=R; save(); refreshUI(); }catch(err){ alert('Archivo no válido'); } });
 };
 document.getElementById('resetRoutine').onclick = () => {
   if(!confirm('¿Volver a la rutina por defecto? (tus horas y racha se quedan)')) return;
@@ -486,7 +537,102 @@ let lastDay = todayKey();
 setInterval(()=>{ tick(); if(todayKey()!==lastDay){ lastDay=todayKey(); renderAll(); } else renderTasks(); }, 30000);
 
 function renderAll(){ renderWake(); renderHours(); renderTasks(); renderWeek(); }
-tick(); showQuote(); showTimer(); renderAll();
+function refreshUI(){
+  for(const [id,k] of Object.entries(sets)) document.getElementById(id).value = S.settings[k];
+  if(document.activeElement !== one) one.value = S.oneThing || '';
+  renderAll();
+}
+
+/* ---------- Sincronización con GitHub Gist ---------- */
+const SYNC_KEY = 'rutina3am_sync', FILE = 'rutina3am.json', API = 'https://api.github.com';
+let sync = {}; try { sync = JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch(e){}
+const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e){} };
+const syncStatus = t => document.getElementById('syncStatus').textContent = t;
+const hhmm = () => new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+
+async function gh(path, opt={}){
+  const r = await fetch(API+path, {...opt, cache:'no-store', headers:{
+    'Authorization':'Bearer '+sync.token, 'Accept':'application/vnd.github+json',
+    ...(opt.body ? {'Content-Type':'application/json'} : {}) }});
+  if(!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+async function readGist(){
+  const g = await gh('/gists/'+sync.gistId), f = g.files && g.files[FILE];
+  if(!f) throw new Error('404');
+  const txt = f.truncated ? await (await fetch(f.raw_url,{cache:'no-store'})).text() : f.content;
+  return JSON.parse(txt);
+}
+// Une los datos de la nube con los locales: en cada campo gana el cambio más reciente
+function merge(R){
+  if(!R || !R.days) return;
+  S.t ||= {}; const rt = R.t || {};
+  META_F.forEach(f => { if(R[f] !== undefined && (rt[f]||0) >= (S.t[f]||0)){ S[f] = R[f]; S.t[f] = rt[f]||0; } });
+  for(const k in R.days){
+    const r = R.days[k], l = (S.days[k] ||= structuredClone(EMPTY)); const r_t = r.t || {}; l.t ||= {};
+    DAY_F.forEach(f => { if(r[f] !== undefined && (r_t[f]||0) >= (l.t[f]||0)){ l[f] = r[f]; l.t[f] = r_t[f]||0; } });
+  }
+}
+let busy = false, again = false, pushTimer = null;
+async function syncNow(){
+  if(!sync.token || !sync.gistId) return;
+  if(busy){ again = true; return; }
+  busy = true; syncStatus('⏳ Sincronizando…');
+  try{
+    const R = await readGist(), before = sig(S);
+    merge(R); takeSnap(); store();
+    if(sig(S) !== before) refreshUI();
+    if(sig(S) !== sig(R))
+      await gh('/gists/'+sync.gistId, {method:'PATCH', body:JSON.stringify({files:{[FILE]:{content:JSON.stringify(S)}}})});
+    syncStatus('✅ Sincronizado a las '+hhmm());
+  }catch(e){
+    syncStatus(e.message==='401' ? '⚠️ El token ya no sirve. Desconecta y pega uno nuevo.'
+      : e.message==='404' ? '⚠️ No encuentro tus datos en GitHub. Desconecta y vuelve a conectar.'
+      : '⚠️ Sin conexión. Tus cambios están guardados aquí y se suben cuando vuelva el internet.');
+  }
+  busy = false;
+  if(again){ again = false; syncNow(); }
+}
+function schedulePush(){ if(!sync.gistId) return; clearTimeout(pushTimer); pushTimer = setTimeout(syncNow, 1500); }
+
+function renderSyncUI(){
+  const on = !!(sync.token && sync.gistId);
+  document.getElementById('syncOff').hidden = on;
+  document.getElementById('syncOn').hidden = !on;
+}
+async function connect(token){
+  sync = {token}; syncStatus('⏳ Conectando…');
+  try{
+    const list = await gh('/gists?per_page=100');
+    const g = list.find(x => x.files && x.files[FILE]);
+    if(g) sync.gistId = g.id;
+    else {
+      const n = await gh('/gists', {method:'POST', body:JSON.stringify({
+        description:'Mi Rutina 3AM (datos)', public:false, files:{[FILE]:{content:JSON.stringify(S)}} })});
+      sync.gistId = n.id;
+    }
+    saveSync(); renderSyncUI(); await syncNow();
+  }catch(e){
+    sync = {}; saveSync(); renderSyncUI();
+    syncStatus(e.message==='401' ? '⚠️ Ese token no es válido. Revisa que lo copiaste completo.'
+      : '⚠️ No se pudo conectar ('+e.message+'). Revisa tu internet y que el token tenga el permiso "gist".');
+  }
+}
+document.getElementById('syncConnect').onclick = () => {
+  const t = document.getElementById('syncToken').value.trim();
+  if(!t) return syncStatus('Pega tu token primero.');
+  document.getElementById('syncToken').value = '';
+  connect(t);
+};
+document.getElementById('syncBtn').onclick = syncNow;
+document.getElementById('syncOut').onclick = () => {
+  if(!confirm('¿Desconectar este dispositivo? Tus datos se quedan aquí y en GitHub.')) return;
+  sync = {}; saveSync(); renderSyncUI(); syncStatus('Desconectado.');
+};
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') syncNow(); });
+setInterval(() => { if(document.visibilityState==='visible') syncNow(); }, 60000);
+
+tick(); showQuote(); showTimer(); renderAll(); renderSyncUI(); syncNow();
 </script>
 </body>
 </html>
