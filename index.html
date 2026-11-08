@@ -552,7 +552,14 @@ tick(); showQuote(); showTimer(); renderAll();
 
 <!-- ===== Firebase: pega aquí la configuración de tu proyecto ===== -->
 <script type="module">
-const firebaseConfig = null; /* REEMPLAZAR con { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." } */
+const firebaseConfig = {
+  apiKey: "AIzaSyBdU_fJCsB812KPX791mAhzwL0VtQnrRw8",
+  authDomain: "mi-rutina-3am.firebaseapp.com",
+  projectId: "mi-rutina-3am",
+  storageBucket: "mi-rutina-3am.firebasestorage.app",
+  messagingSenderId: "398899205394",
+  appId: "1:398899205394:web:94faaf2578b06d25ba8fcb"
+};
 
 const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const $ = id => document.getElementById(id);
