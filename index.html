@@ -241,12 +241,23 @@ footer{margin:28px 0 12px;text-align:center;font-weight:600}
     <section class="card full c-sync">
       <h2>☁️ Sincronizar celular y compu</h2>
       <div id="syncOff">
-        <p class="muted" style="margin-top:0">Entra con tu cuenta de Google y tus datos se guardan en la nube: lo que hagas en el celular aparece al instante en la compu, y al revés.</p>
-        <button class="btn study" id="syncLogin">Entrar con Google</button>
+        <p class="muted" style="margin-top:0">Activa la sincronización y abre tu link secreto en tu otro dispositivo: lo que hagas en uno aparece al instante en el otro. Sin correo ni contraseña.</p>
+        <button class="btn study" id="syncCreate">Activar sincronización</button>
+        <p class="muted" style="margin:12px 0 6px">¿Ya la activaste en otro dispositivo? Abre aquí tu link secreto o pégalo:</p>
+        <div class="row">
+          <input type="text" id="syncCode" placeholder="Pega tu link secreto" autocomplete="off" style="flex:1;min-width:180px">
+          <button class="btn small ok" id="syncJoin">Conectar</button>
+        </div>
       </div>
       <div id="syncOn" hidden>
-        <p class="muted" style="margin-top:0">Conectado como <b id="syncUser"></b>. Los cambios se sincronizan en tiempo real.</p>
-        <button class="btn small" id="syncOut">Cerrar sesión en este dispositivo</button>
+        <p class="muted" style="margin-top:0">✅ Sincronización activa en tiempo real. Abre este <b>link secreto</b> una vez en tu otro dispositivo (mándatelo por WhatsApp). No lo compartas con nadie:</p>
+        <div class="row">
+          <input type="text" id="syncLink" readonly style="flex:1;min-width:180px">
+          <button class="btn small study" id="syncCopy">Copiar link</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn small" id="syncOut">Desconectar este dispositivo</button>
+        </div>
       </div>
       <p class="muted" id="syncStatus" style="margin-bottom:0"></p>
     </section>
@@ -550,7 +561,7 @@ function merge(R){
 tick(); showQuote(); showTimer(); renderAll();
 </script>
 
-<!-- ===== Firebase: pega aquí la configuración de tu proyecto ===== -->
+<!-- ===== Firebase (sincronización con link secreto, sin cuenta) ===== -->
 <script type="module">
 const firebaseConfig = {
   apiKey: "AIzaSyBdU_fJCsB812KPX791mAhzwL0VtQnrRw8",
@@ -560,64 +571,77 @@ const firebaseConfig = {
   messagingSenderId: "398899205394",
   appId: "1:398899205394:web:94faaf2578b06d25ba8fcb"
 };
-
 const V = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const CODE_KEY = 'rutina3am_code';
 const $ = id => document.getElementById(id);
-if(!firebaseConfig){
-  $('syncLogin').disabled = true;
-  syncStatus('La sincronización todavía no está configurada.');
-} else {
-  try {
-    const { initializeApp } = await import(V+'firebase-app.js');
-    const { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } = await import(V+'firebase-auth.js');
-    const { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } = await import(V+'firebase-firestore.js');
-    const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
-    let unsub = null, ref = null, timer = null, lastRemote = '';
+const validCode = c => /^[a-z0-9]{32}$/.test(c || '');
+const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+const linkFor = c => location.origin + location.pathname + '#sync=' + c;
+const codeFrom = t => { const m = String(t||'').trim().match(/(?:sync=)?([a-z0-9]{32})\s*$/); return m ? m[1] : null; };
+let code = null; try { code = localStorage.getItem(CODE_KEY); } catch(e){}
+const setCode = c => { code = c; try { c ? localStorage.setItem(CODE_KEY, c) : localStorage.removeItem(CODE_KEY); } catch(e){} };
 
-    const push = async () => {
-      if(!ref) return;
-      const data = JSON.stringify(S);
-      if(data === lastRemote) return;
-      try { lastRemote = data; await setDoc(ref, { data, updated: serverTimestamp() }); syncStatus('✅ Sincronizado a las '+hhmm()); }
-      catch(e){ lastRemote = ''; syncStatus('⚠️ No se pudo subir ('+e.code+'). Se reintenta con tu próximo cambio.'); }
-    };
-    pushHook = () => { clearTimeout(timer); timer = setTimeout(push, 400); };
+// Si se abrió el link secreto, guardar el código y limpiar la dirección
+const fromHash = codeFrom((location.hash.match(/sync=([a-z0-9]+)/) || [])[0]);
+if(fromHash){ setCode(fromHash); history.replaceState(null, '', location.pathname + location.search); }
 
-    getRedirectResult(auth).catch(e => syncStatus('⚠️ No se pudo entrar: '+e.code));
-    $('syncLogin').onclick = async () => {
-      try { await signInWithPopup(auth, provider); }
-      catch(e){
-        if(['auth/popup-blocked','auth/operation-not-supported-in-environment','auth/cancelled-popup-request'].includes(e.code)) signInWithRedirect(auth, provider);
-        else if(e.code !== 'auth/popup-closed-by-user') syncStatus('⚠️ No se pudo entrar: '+e.code);
+try {
+  const { initializeApp } = await import(V+'firebase-app.js');
+  const { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } = await import(V+'firebase-firestore.js');
+  const db = getFirestore(initializeApp(firebaseConfig));
+  let unsub = null, ref = null, timer = null, lastRemote = '';
+
+  const push = async () => {
+    if(!ref) return;
+    const data = JSON.stringify(S);
+    if(data === lastRemote) return;
+    try { lastRemote = data; await setDoc(ref, { data, updated: serverTimestamp() }); syncStatus('✅ Sincronizado a las '+hhmm()); }
+    catch(e){ lastRemote = ''; syncStatus('⚠️ No se pudo subir ('+e.code+'). Se reintenta con tu próximo cambio.'); }
+  };
+  pushHook = () => { clearTimeout(timer); timer = setTimeout(push, 400); };
+
+  function start(){
+    if(unsub){ unsub(); unsub = null; }
+    const on = validCode(code);
+    $('syncOff').hidden = on; $('syncOn').hidden = !on;
+    if(!on){ ref = null; syncStatus('Sin sincronizar: tus datos se guardan solo en este navegador.'); return; }
+    $('syncLink').value = linkFor(code);
+    syncStatus('⏳ Sincronizando…');
+    ref = doc(db, 'rutinas', code);
+    unsub = onSnapshot(ref, snap => {
+      if(snap.metadata.hasPendingWrites) return;
+      if(snap.exists()){
+        const txt = snap.data().data || '';
+        let R = null; try { R = JSON.parse(txt); } catch(e){}
+        lastRemote = txt;
+        const before = sig(S);
+        merge(R); takeSnap(); store();
+        if(sig(S) !== before) refreshUI();
       }
-    };
-    $('syncOut').onclick = () => signOut(auth);
-
-    onAuthStateChanged(auth, user => {
-      if(unsub){ unsub(); unsub = null; }
-      $('syncOff').hidden = !!user; $('syncOn').hidden = !user;
-      if(!user){ ref = null; syncStatus('Sin conectar: tus datos se guardan solo en este navegador.'); return; }
-      $('syncUser').textContent = user.email || user.displayName || 'tu cuenta';
-      syncStatus('⏳ Sincronizando…');
-      ref = doc(db, 'rutinas', user.uid);
-      unsub = onSnapshot(ref, snap => {
-        if(snap.metadata.hasPendingWrites) return;
-        if(snap.exists()){
-          const txt = snap.data().data || '';
-          let R = null; try { R = JSON.parse(txt); } catch(e){}
-          lastRemote = txt;
-          const before = sig(S);
-          merge(R); takeSnap(); store();
-          if(sig(S) !== before) refreshUI();
-        }
-        push();                       // sube lo que este dispositivo tenga de nuevo
-        syncStatus('✅ Sincronizado a las '+hhmm());
-      }, e => syncStatus('⚠️ Error de sincronización: '+e.code));
-    });
-  } catch(e){
-    syncStatus('⚠️ No se pudo cargar Firebase. Revisa tu internet.');
+      push();
+      syncStatus('✅ Sincronizado a las '+hhmm());
+    }, e => syncStatus(e.code==='permission-denied'
+        ? '⚠️ Firebase rechazó la conexión: revisa que las reglas de Firestore estén publicadas.'
+        : '⚠️ Error de sincronización: '+e.code));
   }
+
+  $('syncCreate').onclick = () => { setCode(newCode()); start(); };
+  $('syncJoin').onclick = () => {
+    const c = codeFrom($('syncCode').value);
+    if(!c) return syncStatus('Ese link no es válido. Cópialo completo desde tu otro dispositivo.');
+    $('syncCode').value = ''; setCode(c); start();
+  };
+  $('syncCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText($('syncLink').value); syncStatus('📋 Link copiado. Ábrelo en tu otro dispositivo.'); }
+    catch(e){ $('syncLink').select(); syncStatus('Selecciona el link y cópialo.'); }
+  };
+  $('syncOut').onclick = () => {
+    if(!confirm('¿Desconectar este dispositivo? Tus datos se quedan aquí y en la nube. Para volver a conectar necesitarás tu link secreto.')) return;
+    setCode(null); start();
+  };
+  start();
+} catch(e){
+  syncStatus('⚠️ No se pudo cargar la sincronización. Revisa tu internet.');
 }
 </script>
 </body>
